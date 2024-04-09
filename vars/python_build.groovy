@@ -41,7 +41,7 @@ def call(dockerRepoName, imageName, portNum) {
                         sh "echo $ACCESS_TOKEN | docker login -u mymangos --password-stdin docker.io"
                         script {
                             def currentDir = pwd().split('/').last()
-                            sh "docker build -t ${dockerRepoName}:latest --tag mymangos/${dockerRepoName}:${imageName} ${currentDir}/."
+                            sh "docker build -t ${dockerRepoName}:latest --tag mymangos/${dockerRepoName}:${imageName} ${newDir}/."
                         }
                         sh "docker push mymangos/${dockerRepoName}:${imageName}"
                     }
