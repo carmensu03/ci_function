@@ -1,4 +1,4 @@
-def call(dockerRepoName, imageName, portNum) {
+def call(dockerRepoName, imageName, portNum, serviceName) {
     pipeline {
         agent any
         parameters {
@@ -11,7 +11,7 @@ def call(dockerRepoName, imageName, portNum) {
                 steps {
                     script {
                         def currentDir = pwd().split('/').last()
-                        sh "pylint --fail-under 5.0 ${currentDir}/*.py" 
+                        sh "pylint --fail-under 5.0 ${serviceName}/*.py" 
                     }
                 }
             }
@@ -25,7 +25,7 @@ def call(dockerRepoName, imageName, portNum) {
                         sh """
                             . .venv/bin/activate
                             pip install bandit
-                            bandit -r ${currentDir}/*.py
+                            bandit -r ${serviceName}/*.py
                         """
                     }
                 }
