@@ -1,0 +1,24 @@
+.package_template:
+  stage: packages
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  variables:
+    DOCKER_USER: $DOCKER_USER
+    TOKEN: $TOKEN
+    dockerRepoName: $dockerRepoName
+    imageName: $imageName
+
+  before_script:
+    - echo "$TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
+    # - docker login -u mleeee -p $TOKEN docker.io
+  script:
+    - docker build -t $dockerRepoName:latest --tag $DOCKER_USER/$dockerRepoName:$imageName .
+    - docker push "$DOCKER_USER/$dockerRepoName:$imageName"
+
+.deliver_template:
+  stage: deliver
+  rules:
+    - if: '$DEPLOY == "true"'
+  script:
+    - docker stop $dockerRepoName || true && docker rm $dockerRepoName || true
+    - docker run -d --name $dockerRepoName $dockerRepoName:latest
