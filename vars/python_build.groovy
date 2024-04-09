@@ -31,9 +31,9 @@ def call(dockerRepoName, imageName, portNum) {
                 }
             }
             stage('Package') {
-                // when {
-                //     expression { env.GIT_BRANCH == 'origin/main' }
-                // }
+                when {
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                }
                 steps {
                     withCredentials([string(credentialsId: 'DockerHub-Carmen', variable: 'ACCESS_TOKEN')]) {
                         sh "echo $TOKEN | docker login -u mymangos --password-stdin docker.io"
@@ -50,7 +50,7 @@ def call(dockerRepoName, imageName, portNum) {
                     expression { params.DEPLOY }
                 }
                 steps {
-                    sshagent(credentials: ['Kafka']) {
+                    sshagent(credentials: ['acit3855']) {
                         sh """
                             [ -d ~/.ssh ] || mkdir ~/.ssh && chmod 0700 ~/.ssh
                             ssh-keyscan -t rsa,dsa 172.203.113.97>> ~/.ssh/known_hosts
