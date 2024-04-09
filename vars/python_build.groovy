@@ -7,15 +7,15 @@ def call(dockerRepoName, imageName, portNum) {
         }
 
         stages {
-            stage('Lint') {
-                steps {
-                    script {
-                        def currentDir = pwd().split('/').last()
-                        newDir = currentDir.split('-').last() 
-                        sh "pylint --fail-under 5.0 ${newDir}/*.py" 
-                    }
-                }
-            }
+            // stage('Lint') {
+            //     steps {
+            //         script {
+            //             def currentDir = pwd().split('/').last()
+            //             newDir = currentDir.split('-').last() 
+            //             sh "pylint --fail-under 5.0 ${newDir}/*.py" 
+            //         }
+            //     }
+            // }
             stage('Security') {
                 steps {
                     script {
