@@ -38,7 +38,7 @@ def call(dockerRepoName, imageName, portNum) {
                 }
                 steps {
                     withCredentials([string(credentialsId: 'DockerHub-Carmen', variable: 'ACCESS_TOKEN')]) {
-                        sh "echo $TOKEN | docker login -u mymangos --password-stdin docker.io"
+                        sh "echo $ACCESS_TOKEN | docker login -u mymangos --password-stdin docker.io"
                         script {
                             def currentDir = pwd().split('/').last()
                             sh "docker build -t ${dockerRepoName}:latest --tag mymangos/${dockerRepoName}:${imageName} ${currentDir}/."
