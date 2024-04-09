@@ -12,7 +12,7 @@ def call(dockerRepoName, imageName, portNum) {
                     script {
                         def currentDir = pwd().split('/').last()
                         newDir = currentDir.split('-').last() 
-                        sh "pylint --fail-under 5.0 ${newDir}/*.py" 
+                        sh "pylint --fail-under 5.0 ${SERVICENAME}/*.py" 
                     }
                 }
             }
