@@ -10,7 +10,6 @@ def call(dockerRepoName, imageName, portNum) {
             stage('Lint') {
                 steps {
                     script {
-                        sh "pwd"
                         def currentDir = pwd().split('/').last()
                         newDir = currentDir.split('-').last() 
                         sh "pylint --fail-under 5.0 ${newDir}/*.py" 
@@ -21,13 +20,14 @@ def call(dockerRepoName, imageName, portNum) {
                 steps {
                     script {
                         def currentDir = pwd().split('/').last()
+                        newDir = currentDir.split('-').last() 
                         sh """
                             python3 -m venv .venv
                         """
                         sh """
                             . .venv/bin/activate
                             pip install bandit
-                            bandit -r ${currentDir}/*.py
+                            bandit -r ${newDir}/*.py
                         """
                     }
                 }
