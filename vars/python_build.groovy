@@ -1,106 +1,63 @@
 def call(dockerRepoName, imageName, portNum) {
     pipeline {
-        agent any // Use any available agent to run the pipeline
-
+        agent any
         parameters {
             booleanParam(defaultValue: false, description: 'Deploy the App', name: 'DEPLOY')
+            string(defaultValue: 'staging', description: '', name: 'DEPLOY_ENV')
         }
 
         stages {
-            // Stage for setting up the virtual environment and installing dependencies
-            stage('Build') {
-                steps {
-                    sh "python3 -m venv venv" // Create a virtual environment
-                    sh ". venv/bin/activate" // Activate the virtual environment
-                    // Install dependencies listed in requirements.txt, ignoring installed packages
-                    sh "venv/bin/pip install -r requirements.txt"
-                    // Upgrade Flask within the virtual environment, ignoring installed packages
-                    sh "venv/bin/pip install --upgrade flask"
-                    sh "venv/bin/pip install coverage" // Install coverage for code coverage analysis
-                }
-            }
-
-            // Stage for running Python Lint to check code quality
-            stage('Python Lint') {
-                steps {
-                    sh 'pylint --fail-under 5.0 *.py' // Run pylint on all .py files, failing if score < 5.0
-                }
-            }
-
-            // Stage for running tests with coverage
-            stage('Test and Coverage') {
+            stage('Lint') {
                 steps {
                     script {
-                        // Check if old test reports exist and remove them to start fresh
-                        def test_reports_exist = fileExists 'test-reports'
-                        if (test_reports_exist) { 
-                            sh 'rm test-reports/*.xml || true'
-                        }
-                        def api_test_reports_exist = fileExists 'api-test-reports'
-                        if (api_test_reports_exist) { 
-                            sh 'rm api-test-reports/*.xml || true'
-                        }
-                    }
-                    script {
-                        // Find all test files starting with 'test' and run them with coverage
-                        def files = findFiles(glob: 'test*.py')
-                        for (file in files) {
-                            sh "venv/bin/coverage run --omit */site-packages/*,*/dist-packages/* ${file}"
-                        }
-                        sh "venv/bin/coverage report" // Generate an aggregated coverage report
-                    }
-                }
-                post {
-                    always {
-                        script {
-                            // Publish junit test results and coverage reports if they exist
-                            def test_reports_exist = fileExists 'test-reports'
-                            if (test_reports_exist) { 
-                                junit 'test-reports/*.xml'
-                            }
-                            def api_test_reports_exist = fileExists 'api-test-reports'
-                            if (api_test_reports_exist) { 
-                                junit 'api-test-reports/*.xml'
-                            }
-                        }
+                        def currentDir = pwd().split('/').last()
+                        sh "pylint --fail-under 5.0 ${currentDir}/*.py" 
                     }
                 }
             }
-
+            stage('Security') {
+                steps {
+                    script {
+                        def currentDir = pwd().split('/').last()
+                        sh """
+                            python3 -m venv .venv
+                        """
+                        sh """
+                            . .venv/bin/activate
+                            pip install bandit
+                            bandit -r ${currentDir}/*.py
+                        """
+                    }
+                }
+            }
             stage('Package') {
-                when {
-                    expression { env.GIT_BRANCH == 'origin/main' }
-                }
+                // when {
+                //     expression { env.GIT_BRANCH == 'origin/main' }
+                // }
                 steps {
-                    withCredentials([string(credentialsId: 'DockerHub', variable: 'TOKEN')]) {
-                        sh "docker login -u 'mleeee' -p '$TOKEN' docker.io"
-                        sh "docker build -t ${dockerRepoName}:latest --tag mleeee/${dockerRepoName}:${imageName} ."
-                        sh "docker push mleeee/${dockerRepoName}:${imageName}"
+                    withCredentials([string(credentialsId: 'DockerH', variable: 'TOKEN')]) {
+                        sh "echo $TOKEN | docker login -u mymangos --password-stdin docker.io"
+                        script {
+                            def currentDir = pwd().split('/').last()
+                            sh "docker build -t ${dockerRepoName}:latest --tag mymangos/${dockerRepoName}:${imageName} ${currentDir}/."
+                        }
+                        sh "docker push mymangos/${dockerRepoName}:${imageName}"
                     }
                 }
             }
-
-            // Stage for zipping all Python (.py) files into an archive
-            stage('Zip Artifacts') {
-                steps {
-                    sh "zip app.zip *.py" // Zip all .py files into app.zip
-                }
-                post {
-                    always {
-                        // Archive the zip file as a build artifact
-                        archiveArtifacts artifacts: 'app.zip', allowEmptyArchive: true
-                    }
-                }
-            }
-                    
-            stage('Deliver') {
+            stage('Deploy') {
                 when {
                     expression { params.DEPLOY }
                 }
                 steps {
-                    // sh "docker run ${dockerRepoName}:latest"
-                    sh "docker stop ${dockerRepoName} || true && docker rm ${dockerRepoName} || true"
-                    sh "docker run -d -p ${portNum}:${portNum} --name ${dockerRepoName} ${dockerRepoName}:latest"
+                    sshagent(credentials: ['Kafka']) {
+                        sh """
+                            [ -d ~/.ssh ] || mkdir ~/.ssh && chmod 0700 ~/.ssh
+                            ssh-keyscan -t rsa,dsa 172.203.113.97>> ~/.ssh/known_hosts
+                        """
+                        sh "ssh azureuser@172.203.113.97 'docker pull mymangos/${dockerRepoName}:${imageName}'"
+                        sh "ssh azureuser@172.203.113.97 'docker compose up -d'"
+                    }
                 }
             }
         }
